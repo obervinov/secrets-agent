@@ -70,7 +70,7 @@ func (f *Fetcher) attempt(ctx context.Context) (Values, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxPayload))
 	if err != nil {

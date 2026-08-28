@@ -13,9 +13,9 @@ type Logger struct {
 }
 
 func (l Logger) Infof(format string, args ...any) {
-	fmt.Fprintf(l.Out, "secrets-agent: "+format+"\n", args...)
+	_, _ = fmt.Fprintf(l.Out, "secrets-agent: "+format+"\n", args...)
 }
 
 func (l Logger) Warnf(format string, args ...any) {
-	fmt.Fprintf(l.Err, "secrets-agent: "+format+"\n", args...)
+	_, _ = fmt.Fprintf(l.Err, "secrets-agent: "+format+"\n", args...)
 }

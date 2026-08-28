@@ -103,11 +103,11 @@ func lock(path string) (func(), bool, error) {
 		return nil, false, err
 	}
 	if err := syscall.Flock(int(handle.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		handle.Close()
+		_ = handle.Close()
 		return nil, false, nil
 	}
 	return func() {
-		syscall.Flock(int(handle.Fd()), syscall.LOCK_UN)
-		handle.Close()
+		_ = syscall.Flock(int(handle.Fd()), syscall.LOCK_UN)
+		_ = handle.Close()
 	}, true, nil
 }
