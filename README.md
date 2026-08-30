@@ -27,7 +27,7 @@ systemd timer
                 └─ Cloudflare Secrets Store
        ↓
        ├─ docker compose ── variables passed in its environment
-       ├─ grafana alloy ─── EnvironmentFile via a systemd drop-in
+       ├─ systemd units ─── EnvironmentFile via a drop-in, one per configured unit
        └─ /opt/secrets/files/<name> ── one file per variable, for images
                                        that read *_FILE
 ```
@@ -43,8 +43,8 @@ systemd timer
 - **No dotenv rendering.** Variables reach `docker compose` through its process
   environment, so values containing quotes, `$`, `#` or spaces need no escaping and
   cannot break the whole file.
-- **The package's own config is left alone.** Alloy's variables go into a drop-in with
-  a second `EnvironmentFile=`, never over `/etc/default/alloy`.
+- **The package's own config is left alone.** A unit's variables go into a drop-in with
+  a second `EnvironmentFile=`, never over a conffile the package ships.
 - **It refuses to run insecurely.** The config holds the credential that unlocks every
   secret for the host, so the agent exits unless that file is root-owned and mode
   0600, and unless the endpoint is `https://`.
@@ -61,9 +61,19 @@ systemd timer
 AGENT_URL=https://secrets.example.com/v1/env/web-1
 AUTH_HEADERS={"CF-Access-Client-Id":"...","CF-Access-Client-Secret":"..."}
 COMPOSE_FILE=/opt/configurations/docker-compose.yml
+SYSTEMD_UNITS=[{"unit":"alloy.service","prefix":"ALLOY_","group":"alloy"}]
 STATE_DIR=/opt/secrets
 FILES_MODE=0644
 ```
+
+`COMPOSE_FILE` and `SYSTEMD_UNITS` are both optional on their own — at least one has
+to be set, since otherwise nothing consumes the variables.
+
+Each entry in `SYSTEMD_UNITS` takes the variables matching its `prefix`, renders them
+to `env_file` (defaulting to `<STATE_DIR>/<unit>.env`), points the unit at that file
+through `/etc/systemd/system/<unit>.d/10-secrets-agent.conf`, and restarts the unit
+when the content changed. `group` sets the group owning the rendered file. A unit that
+is not installed on the host is skipped rather than treated as a failure.
 
 `/etc/secrets-agent.files` routes individual variables to their own file, for images
 that take `*_FILE` instead of a value:

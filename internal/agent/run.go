@@ -63,8 +63,10 @@ func Run(ctx context.Context, cfg *Config, log Logger) error {
 		return err
 	}
 
-	applier.Compose(merged)
-	applier.Alloy(merged)
+	if cfg.ComposeFile != "" {
+		applier.Compose(merged)
+	}
+	applier.Units(merged)
 	applier.Files(merged)
 
 	if err := applier.Save(); err != nil {

@@ -10,11 +10,6 @@ import (
 	"strings"
 )
 
-// alloyDropIn adds a second EnvironmentFile to the unit. The package ships
-// /etc/default/alloy as its own conffile containing CONFIG_FILE and CUSTOM_ARGS, so
-// rendering over that file would leave alloy with no config path at all.
-const alloyDropIn = "/etc/systemd/system/alloy.service.d/10-secrets-agent.conf"
-
 // validFileName guards the routed-file names, which become path components and come
 // from a file users are told to edit.
 var validFileName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
@@ -82,47 +77,64 @@ func (a *Applier) Compose(values Values) {
 	a.applied["compose"] = digest
 }
 
-// Alloy renders the ALLOY_* subset for the unit to read. Hosts without alloy are
-// skipped rather than failed, otherwise the whole run aborts on a host that simply
-// does not run it and no other consumer is ever applied.
-func (a *Applier) Alloy(values Values) {
-	subset := values.Subset("ALLOY_")
+// Units renders each configured unit's share of the variables into its own
+// EnvironmentFile and restarts it when the content changed.
+//
+// The file is added through a drop-in rather than written over whatever the unit
+// already reads: a package that ships its own conffile there keeps it, and its
+// settings are not silently replaced by ours.
+//
+// A unit that is not installed is skipped rather than failed — one host running a
+// subset of the fleet's services must not fail every other consumer with it.
+func (a *Applier) Units(values Values) {
+	for _, unit := range a.Config.Units {
+		a.unit(unit, values)
+	}
+}
+
+func (a *Applier) unit(consumer UnitConsumer, values Values) {
+	subset := values.Subset(consumer.Prefix)
 	if len(subset) == 0 {
 		return
 	}
-	if !unitExists("alloy.service") {
-		a.Log.Infof("alloy.service not present, skipping its %d variables", len(subset))
+	if !unitExists(consumer.Unit) {
+		a.Log.Infof("%s not installed, skipping its %d variable(s)", consumer.Unit, len(subset))
 		return
 	}
 
 	content, err := subset.RenderSystemdEnv()
 	if err != nil {
-		a.fail("alloy: %v", err)
+		a.fail("%s: %v", consumer.Unit, err)
 		return
 	}
 
-	dropInChanged, err := ensureAlloyDropIn(a.Config.AlloyEnv)
+	dropInChanged, err := ensureDropIn(consumer)
 	if err != nil {
-		a.fail("alloy drop-in: %v", err)
+		a.fail("%s drop-in: %v", consumer.Unit, err)
 		return
 	}
 
-	digest := Digest(content, a.Config.AlloyEnv)
-	if a.applied["alloy"] == digest && !dropInChanged {
-		a.Log.Infof("alloy unchanged")
+	key := "unit:" + consumer.Unit
+	digest := Digest(content, consumer.EnvFile)
+	if a.applied[key] == digest && !dropInChanged {
+		a.Log.Infof("%s unchanged", consumer.Unit)
 		return
 	}
 
-	a.Log.Infof("applying alloy (%d variables)", len(subset))
-	if err := WriteFileAtomic(a.Config.AlloyEnv, []byte(content), 0o640, "alloy"); err != nil {
-		a.fail("alloy env file: %v", err)
+	a.Log.Infof("applying %s (%d variables)", consumer.Unit, len(subset))
+	mode := os.FileMode(0o600)
+	if consumer.Group != "" {
+		mode = 0o640
+	}
+	if err := WriteFileAtomic(consumer.EnvFile, []byte(content), mode, consumer.Group); err != nil {
+		a.fail("%s env file: %v", consumer.Unit, err)
 		return
 	}
-	if err := run("systemctl", "restart", "alloy.service"); err != nil {
-		a.fail("alloy restart: %v", err)
+	if err := run("systemctl", "restart", consumer.Unit); err != nil {
+		a.fail("%s restart: %v", consumer.Unit, err)
 		return
 	}
-	a.applied["alloy"] = digest
+	a.applied[key] = digest
 }
 
 // Files writes one file per routed variable, for images that read *_FILE instead of an
@@ -196,10 +208,11 @@ func (a *Applier) Files(values Values) {
 	}
 }
 
-func ensureAlloyDropIn(envPath string) (bool, error) {
-	wanted := fmt.Sprintf("[Service]\nEnvironmentFile=%s\n", envPath)
+func ensureDropIn(consumer UnitConsumer) (bool, error) {
+	path := filepath.Join("/etc/systemd/system", consumer.Unit+".d", "10-secrets-agent.conf")
+	wanted := fmt.Sprintf("[Service]\nEnvironmentFile=%s\n", consumer.EnvFile)
 
-	existing, err := os.ReadFile(alloyDropIn)
+	existing, err := os.ReadFile(path)
 	if err == nil && string(existing) == wanted {
 		return false, nil
 	}
@@ -207,10 +220,10 @@ func ensureAlloyDropIn(envPath string) (bool, error) {
 		return false, err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(alloyDropIn), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return false, err
 	}
-	if err := WriteFileAtomic(alloyDropIn, []byte(wanted), 0o644, ""); err != nil {
+	if err := WriteFileAtomic(path, []byte(wanted), 0o644, ""); err != nil {
 		return false, err
 	}
 	if err := run("systemctl", "daemon-reload"); err != nil {

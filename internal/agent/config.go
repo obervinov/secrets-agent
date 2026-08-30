@@ -20,8 +20,22 @@ type Config struct {
 	StateDir    string
 	TFEnvFile   string
 	RoutingFile string
-	AlloyEnv    string
+	Units       []UnitConsumer
 	FilesMode   os.FileMode
+}
+
+// UnitConsumer is a systemd unit that takes some of the variables through an
+// EnvironmentFile. Configured rather than hardcoded: which units exist, and which
+// variables belong to them, is a property of the host, not of this program.
+type UnitConsumer struct {
+	// Unit is the systemd unit to restart, e.g. "alloy.service".
+	Unit string `json:"unit"`
+	// Prefix selects the variables this unit gets, e.g. "ALLOY_".
+	Prefix string `json:"prefix"`
+	// EnvFile is where they are rendered. Defaults to <state_dir>/<unit>.env.
+	EnvFile string `json:"env_file"`
+	// Group, when set, owns the rendered file so a non-root unit can read it.
+	Group string `json:"group"`
 }
 
 func (c *Config) CachePath() string   { return filepath.Join(c.StateDir, "cache.json") }
@@ -53,8 +67,12 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("config %s: %w", path, err)
 	}
 
-	values := parseKeyValues(string(raw))
+	return parseConfig(parseKeyValues(string(raw)), path)
+}
 
+// parseConfig is split out so the rules below are testable without being root, which
+// LoadConfig deliberately requires.
+func parseConfig(values map[string]string, path string) (*Config, error) {
 	cfg := &Config{
 		URL:         values["AGENT_URL"],
 		ComposeFile: values["COMPOSE_FILE"],
@@ -63,7 +81,22 @@ func LoadConfig(path string) (*Config, error) {
 		FilesMode:   0o644,
 	}
 	cfg.TFEnvFile = orDefault(values["TF_ENV"], filepath.Join(cfg.StateDir, "terraform.env"))
-	cfg.AlloyEnv = orDefault(values["ALLOY_ENV"], filepath.Join(cfg.StateDir, "alloy.env"))
+
+	if units := values["SYSTEMD_UNITS"]; units != "" {
+		if err := json.Unmarshal([]byte(units), &cfg.Units); err != nil {
+			return nil, fmt.Errorf("SYSTEMD_UNITS is not a JSON array: %w", err)
+		}
+		for index := range cfg.Units {
+			unit := &cfg.Units[index]
+			if unit.Unit == "" || unit.Prefix == "" {
+				return nil, fmt.Errorf("SYSTEMD_UNITS[%d] needs both unit and prefix", index)
+			}
+			if unit.EnvFile == "" {
+				unit.EnvFile = filepath.Join(cfg.StateDir,
+					strings.TrimSuffix(unit.Unit, ".service")+".env")
+			}
+		}
+	}
 
 	if mode := values["FILES_MODE"]; mode != "" {
 		parsed, err := strconv.ParseUint(mode, 8, 32)
@@ -89,8 +122,8 @@ func LoadConfig(path string) (*Config, error) {
 	if len(cfg.AuthHeaders) == 0 {
 		return nil, fmt.Errorf("config %s is missing AUTH_HEADERS", path)
 	}
-	if cfg.ComposeFile == "" {
-		return nil, fmt.Errorf("config %s is missing COMPOSE_FILE", path)
+	if cfg.ComposeFile == "" && len(cfg.Units) == 0 {
+		return nil, fmt.Errorf("config %s configures no consumer: set COMPOSE_FILE, SYSTEMD_UNITS or both", path)
 	}
 
 	return cfg, nil
