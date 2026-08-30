@@ -15,6 +15,62 @@ useless one for a plain server. This project bridges the gap:
 The agent itself is backend-agnostic: it fetches a JSON object of variables from an
 authenticated HTTPS endpoint. Cloudflare is the reference backend, not a requirement.
 
+## What it is for
+
+The gap it fills is narrow and specific. Cloudflare Secrets Store is a good place to
+keep secrets — values are write-only, they cannot be read back through the API at all,
+only bound into a Worker. That last property is exactly what makes it useless as a
+secret source for a server that is not a Worker.
+
+So the store solves storage and stops there. This carries the last mile.
+
+### Fits
+
+**A small fleet of VMs outside Kubernetes.** Two droplets, a handful of LXC guests, a
+box at home. Running Vault for that means running — and bootstrapping, and unsealing,
+and backing up — one more stateful service whose own secrets have to come from
+somewhere. If Cloudflare is already in the picture, this needs no new server at all.
+
+**A host that must not depend on what sits behind it.** The clearest case, and the one
+this was built for: a gateway that fronts a cluster cannot take its secrets from a
+store that is only reachable through that same gateway. The agent talks to Cloudflare
+over the public internet, so recovering the host needs nothing from inside the estate
+it serves. If your secret store lives behind the machine you are trying to boot, that
+circularity is the problem this removes.
+
+**Getting secrets out of `/etc/environment`.** The usual shortcut is a global env file
+at mode 0644 that `pam_env` loads into every login session, which puts every secret in
+the environment of every process on the box. Here each consumer gets only its own
+variables, and `docker compose` gets them through its process environment with no file
+at all.
+
+**Rotating without a deploy.** Edit the value in the store; the agent picks it up on
+its next tick and restarts only what actually changed. No pipeline run, no
+`terraform apply`, no image rebuild.
+
+**Mixed consumers on one host.** Containers that read environment variables, systemd
+units that want an `EnvironmentFile`, and images that insist on `*_FILE` — all fed
+from the same payload, each in the shape it expects.
+
+### Does not fit
+
+**Kubernetes.** Use the External Secrets Operator. This exists for hosts that have no
+operator to run.
+
+**Anything needing per-secret audit, leases, or dynamic credentials.** That is Vault's
+job and this does not attempt it. There is no record of which secret was read when,
+because the Worker hands over the whole set for a host at once.
+
+**Secrets that must never be plaintext on disk.** Rendered files are plaintext, mode
+0600. Rendering into `/etc/credstore.encrypted/` so systemd can hold them TPM-sealed is
+the intended direction; it is not implemented.
+
+**Untrusted operators or multi-tenant hosts.** Root on the host reads everything, and
+the host's own credential unlocks that host's entire set.
+
+**Air-gapped estates.** The whole design assumes the host can reach the store over the
+internet.
+
 ## How it fits together
 
 ```
