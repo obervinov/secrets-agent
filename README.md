@@ -1,5 +1,14 @@
 # secrets-agent
 
+[![PR](https://github.com/obervinov/secrets-agent/actions/workflows/pr.yaml/badge.svg?branch=main&event=pull_request)](https://github.com/obervinov/secrets-agent/actions/workflows/pr.yaml)
+[![Release](https://github.com/obervinov/secrets-agent/actions/workflows/release.yaml/badge.svg)](https://github.com/obervinov/secrets-agent/actions/workflows/release.yaml)
+
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/obervinov/secrets-agent?style=for-the-badge)
+![GitHub last commit](https://img.shields.io/github/last-commit/obervinov/secrets-agent?style=for-the-badge)
+![GitHub Release Date](https://img.shields.io/github/release-date/obervinov/secrets-agent?style=for-the-badge)
+![Go version](https://img.shields.io/github/go-mod/go-version/obervinov/secrets-agent?style=for-the-badge)
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
 Use an external secret store as the source of environment variables for ordinary VMs.
 
 Cloudflare Secrets Store keeps secret values write-only: they cannot be read back
@@ -73,20 +82,37 @@ internet.
 
 ## How it fits together
 
+```mermaid
+flowchart LR
+    subgraph cf["☁️ Cloudflare"]
+        store[("Secrets Store<br/><i>write-only values</i>")]
+        access["Access<br/><i>per-host service token</i>"]
+        worker["Worker<br/><i>merges shared + host blob</i>"]
+        access -->|"403 without the token"| worker
+        worker --> store
+    end
+
+    subgraph host["🖥️ Your VM"]
+        timer["systemd timer<br/><i>every 15 min, and on boot</i>"]
+        agent["secrets-agent"]
+        cache[("last good payload<br/><i>used when the fetch fails</i>")]
+        timer --> agent
+        agent <--> cache
+        agent -->|"process env"| compose["docker compose"]
+        agent -->|"EnvironmentFile drop-in"| units["systemd units"]
+        agent -->|"one file per variable"| files["*_FILE consumers"]
+    end
+
+    agent ==>|"GET /v1/env/&lt;host&gt;"| access
+
+    classDef edge fill:#f6f8fa,stroke:#57606a,color:#24292f
+    classDef box fill:#ddf4ff,stroke:#0969da,color:#24292f
+    class store,access,worker edge
+    class timer,agent,cache,compose,units,files box
 ```
-systemd timer
-  └─ secrets-agent
-       └─ GET https://secrets.example.com/v1/env/<host>
-            with the host's service token headers
-          └─ Cloudflare Access ── 403 for anything without that token
-             └─ Worker ── merges a shared blob with the host's blob
-                └─ Cloudflare Secrets Store
-       ↓
-       ├─ docker compose ── variables passed in its environment
-       ├─ systemd units ─── EnvironmentFile via a drop-in, one per configured unit
-       └─ /opt/secrets/files/<name> ── one file per variable, for images
-                                       that read *_FILE
-```
+
+Restarts only what actually changed, and records a consumer as applied only after its
+command succeeded — so a failed restart is retried on the next tick rather than lost.
 
 ## What the agent guarantees
 
