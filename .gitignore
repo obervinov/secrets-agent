@@ -1,3 +1,5 @@
 dist/
-secrets-agent
+# Anchored: an unanchored "secrets-agent" also matches cmd/secrets-agent/, which
+# silently kept the command out of the repository entirely.
+/secrets-agent
 *.test
