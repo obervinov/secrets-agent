@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## v1.0.0 - 2026-08-28
+## v1.0.0 - 2026-09-03
 ### What's Changed
 #### 🚀 Features
 * `worker/`: a Cloudflare Worker serving each host its own merged set of variables from the Secrets Store, behind Cloudflare Access with a per-host service token. Secrets Store values are write-only and readable only from a Worker binding, which is what makes them unusable as a secret source for a plain VM and why this exists.
