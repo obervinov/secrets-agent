@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v1.1.0 - 2026-09-03
+### What's Changed
+#### 🚀 Features
+* `worker/`: verify the Cloudflare Access JWT instead of only checking that the header is present. The signature is checked against the team's published keys, and `aud` is bound to the Access application guarding the requested host — so a token issued for one host cannot be replayed against another's path, regardless of how Access matches paths. The previous check could not survive the case it existed for: a deleted or misconfigured Access application leaves requests unfiltered, and the header is client-settable. `alg` is pinned to RS256 rather than taken from the token, the key set is cached per isolate with a refetch on an unknown `kid`, and an unreachable key endpoint fails closed. The manifest now carries `{secret, aud}` per host and the Worker needs a `TEAM_DOMAIN` binding.
+
 ## v1.0.0 - 2026-09-03
 ### What's Changed
 #### 🚀 Features
