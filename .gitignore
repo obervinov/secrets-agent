@@ -1,0 +1,3 @@
+dist/
+secrets-agent
+*.test

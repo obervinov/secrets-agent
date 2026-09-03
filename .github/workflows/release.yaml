@@ -1,0 +1,24 @@
+---
+name: Release
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+# Scoped for the reusable workflows: create the release/tag and attach the binaries.
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+  checks: read
+
+jobs:
+  create-release:
+    if: github.event.pull_request.merged == true
+    uses: obervinov/_templates/.github/workflows/release.yaml@v3.6.0
+
+  attach-binaries:
+    if: github.event.pull_request.merged == true
+    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v3.6.0
+    needs: [create-release]
