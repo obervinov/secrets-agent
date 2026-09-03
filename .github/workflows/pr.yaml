@@ -15,13 +15,18 @@ permissions:
 
 jobs:
   pr:
-    uses: obervinov/_templates/.github/workflows/pr.yaml@v3.8.0
+    uses: obervinov/_templates/.github/workflows/pr.yaml@v3.9.0
 
   golang:
-    uses: obervinov/_templates/.github/workflows/golang.yaml@v3.8.0
+    uses: obervinov/_templates/.github/workflows/golang.yaml@v3.9.0
+
+  # The Worker holds the Access JWT verification that guards every secret served, so
+  # its tests belong in CI as much as the Go ones.
+  nodejs:
+    uses: obervinov/_templates/.github/workflows/nodejs.yaml@v3.9.0
 
   # Runs here too, so a PR proves the cross-compilation works; the upload step
   # inside it is skipped off the default branch.
   binaries:
-    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v3.8.0
-    needs: [golang]
+    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v3.9.0
+    needs: [golang, nodejs]
