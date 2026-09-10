@@ -20,5 +20,5 @@ jobs:
 
   attach-binaries:
     if: github.event.pull_request.merged == true
-    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v3.9.0
+    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v3.9.1
     needs: [create-release]

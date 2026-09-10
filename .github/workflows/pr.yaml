@@ -28,5 +28,5 @@ jobs:
   # Runs here too, so a PR proves the cross-compilation works; the upload step
   # inside it is skipped off the default branch.
   binaries:
-    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v3.9.0
+    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v3.9.1
     needs: [golang, nodejs]
