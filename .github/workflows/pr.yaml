@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   pr:
-    uses: obervinov/_templates/.github/workflows/pr.yaml@v3.9.0
+    uses: obervinov/_templates/.github/workflows/pr.yaml@v3.9.1
 
   golang:
     uses: obervinov/_templates/.github/workflows/golang.yaml@v3.9.0
