@@ -16,7 +16,7 @@ permissions:
 jobs:
   create-release:
     if: github.event.pull_request.merged == true
-    uses: obervinov/_templates/.github/workflows/release.yaml@v3.9.0
+    uses: obervinov/_templates/.github/workflows/release.yaml@v3.9.1
 
   attach-binaries:
     if: github.event.pull_request.merged == true
