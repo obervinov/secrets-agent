@@ -23,7 +23,7 @@ jobs:
   # The Worker holds the Access JWT verification that guards every secret served, so
   # its tests belong in CI as much as the Go ones.
   nodejs:
-    uses: obervinov/_templates/.github/workflows/nodejs.yaml@v3.9.0
+    uses: obervinov/_templates/.github/workflows/nodejs.yaml@v3.9.1
 
   # Runs here too, so a PR proves the cross-compilation works; the upload step
   # inside it is skipped off the default branch.
