@@ -1,4 +1,7 @@
-# terraform module
+# terraform modules
+
+- `terraform/` — installs the agent on a host, documented below
+- `terraform/worker` — hands the Cloudflare Worker source to whoever deploys it
 
 Installs the agent on a host and keeps its configuration in step with your terraform.
 
@@ -94,3 +97,38 @@ artifact.
 Changing a secret needs none of this: edit it in the store and the agent picks it up on
 its next tick. Terraform is only involved when the agent's version or its configuration
 changes.
+
+---
+
+# terraform/worker
+
+The Worker that serves the secrets is deployed by the operator's own terraform, against
+their own Cloudflare account, Access applications and Secrets Store — none of which
+this project can own. What it can own is the script, so it is not copied into every
+consumer's repository where the two would drift apart.
+
+```hcl
+module "worker_source" {
+  source = "github.com/obervinov/secrets-agent//terraform/worker?ref=v1.3.0"
+}
+
+resource "cloudflare_workers_script" "secrets_proxy" {
+  account_id     = var.account_id
+  script_name    = "secrets-proxy"
+  content        = module.worker_source.script
+  content_sha256 = module.worker_source.script_sha256
+  main_module    = module.worker_source.main_module
+
+  # bindings: EXPECTED_HOST, TEAM_DOMAIN, MANIFEST, and one
+  # secrets_store_secret per blob
+}
+```
+
+`?ref=` pins it, so a caller gets the script that shipped with that release rather than
+whatever is on `main`. Bumping the ref is what deploys a new Worker.
+
+| Output | Description |
+| ------ | ----------- |
+| `script` | Source, for `content` |
+| `script_sha256` | Hash of it, for `content_sha256` |
+| `main_module` | File name the entrypoint is expected under |
