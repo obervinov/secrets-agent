@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v1.3.0 - 2026-09-11
+### What's Changed
+#### 🚀 Features
+* `terraform/worker`: a module handing the worker source to whoever deploys it. The worker is deployed by the operator's own terraform, against their own Cloudflare account, Access applications and Secrets Store — so this project cannot own the deployment, but it can own the script. Without somewhere to fetch it from, every consumer keeps a copy in their own repository and the two drift apart. `?ref=` pins it, so a caller gets the script that shipped with that release rather than whatever is on `main`.
+
 ## v1.2.0 - 2026-09-11
 ### What's Changed
 #### 🚀 Features

@@ -3,3 +3,7 @@ dist/
 # silently kept the command out of the repository entirely.
 /secrets-agent
 *.test
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
