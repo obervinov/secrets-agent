@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v1.3.1 - 2026-09-11
+### What's Changed
+#### 🐛 Bug Fixes
+* `terraform/`: stage under an absolute path. A `file` provisioner runs no shell, so `~/.secrets-agent` reached scp literally and every install failed with `Upload failed: scp: ~/.secrets-agent: No such file or directory` — the preceding `remote-exec` had created the directory under the real `$HOME`, where the upload never looked. Staging moves to `/tmp/secrets-agent-install`, mode 0700 so the config is not readable by other users for the seconds it exists.
+* `terraform/`: never upload empty content. A caller passing neither `routed_files` nor `env` produced two zero-byte provisioner uploads; both files now carry a header naming what wrote them, which the agent skips as a comment.
+
 ## v1.3.0 - 2026-09-11
 ### What's Changed
 #### 🚀 Features
