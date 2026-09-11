@@ -1,6 +1,8 @@
 terraform {
-  # optional() defaults in variable types need 1.3; terraform_data needs 1.4.
-  required_version = ">= 1.4"
+  # Matches the rest of the estate. The features used here need less — terraform_data
+  # landed in 1.4 — but 1.11 is what this was validated against, and a floor nobody
+  # tested is a claim rather than a constraint.
+  required_version = ">= 1.11"
 }
 
 # No required_providers on purpose. The module reaches the host over SSH and uses
