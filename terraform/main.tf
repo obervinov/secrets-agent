@@ -4,12 +4,6 @@ locals {
   routing_path = "/etc/secrets-agent.files"
   asset_base   = "https://github.com/obervinov/secrets-agent/releases/download/${var.agent_version}"
 
-  # Absolute, because a file provisioner runs no shell: `~` reaches scp literally and
-  # the upload fails with "scp: ~/...: No such file or directory". Mode 0700 on the
-  # directory is what keeps the staged config away from other users for the seconds it
-  # exists, since scp creates files 0644.
-  staging_dir = "/tmp/secrets-agent-install"
-
   unit = templatefile("${path.module}/templates/secrets-agent.service.tftpl", {
     binary_path = local.binary_path
     config_path = local.config_path
@@ -91,8 +85,13 @@ resource "terraform_data" "agent" {
     private_key = var.ssh_private_key
   }
 
+  # Staged under a path unique to this apply. /tmp is shared, so a fixed name collides
+  # with whatever a previous run — or a hand-rolled install — left behind, and a
+  # directory owned by another user cannot be chmod'ed by the connecting one. Mode 0700
+  # is what keeps the config away from other users for the seconds it exists, since scp
+  # creates files 0644.
   provisioner "remote-exec" {
-    inline = ["install -d -m 0700 ${local.staging_dir}"]
+    inline = ["install -d -m 0700 /tmp/secrets-agent-${self.id}"]
   }
 
   # The config holds the credential that unlocks every secret for this host, so it
@@ -100,33 +99,33 @@ resource "terraform_data" "agent" {
   # into the plan, and a plan is routinely kept as a CI artifact.
   provisioner "file" {
     content     = local.config
-    destination = "${local.staging_dir}/secrets-agent.conf"
+    destination = "/tmp/secrets-agent-${self.id}/secrets-agent.conf"
   }
 
   provisioner "file" {
     content     = local.unit
-    destination = "${local.staging_dir}/secrets-agent.service"
+    destination = "/tmp/secrets-agent-${self.id}/secrets-agent.service"
   }
 
   provisioner "file" {
     content     = local.timer
-    destination = "${local.staging_dir}/secrets-agent.timer"
+    destination = "/tmp/secrets-agent-${self.id}/secrets-agent.timer"
   }
 
   provisioner "file" {
     content     = local.routing
-    destination = "${local.staging_dir}/secrets-agent.files"
+    destination = "/tmp/secrets-agent-${self.id}/secrets-agent.files"
   }
 
   provisioner "file" {
     content     = local.env
-    destination = "${local.staging_dir}/terraform.env"
+    destination = "/tmp/secrets-agent-${self.id}/terraform.env"
   }
 
   provisioner "remote-exec" {
     inline = [
       "set -eu",
-      "cd ${local.staging_dir}",
+      "cd /tmp/secrets-agent-${self.id}",
 
       # Verify before installing: a tampered or truncated download has to fail the
       # apply, not leave a broken binary in place.
@@ -146,7 +145,7 @@ resource "terraform_data" "agent" {
       "sudo install -m 0644 -o root -g root secrets-agent.files ${local.routing_path}",
       "sudo install -m 0644 -o root -g root secrets-agent.service /etc/systemd/system/secrets-agent.service",
       "sudo install -m 0644 -o root -g root secrets-agent.timer /etc/systemd/system/secrets-agent.timer",
-      "cd / && rm -rf ${local.staging_dir}",
+      "cd / && rm -rf /tmp/secrets-agent-${self.id}",
 
       "sudo systemctl daemon-reload",
       "sudo systemctl enable --now secrets-agent.timer",

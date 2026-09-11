@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v1.3.2 - 2026-09-12
+### What's Changed
+#### 🐛 Bug Fixes
+* `terraform/`: stage under a path unique to each apply. The fixed `/tmp/secrets-agent-install` collided with a leftover directory owned by another user, and the install failed with `install: cannot change permissions of '/tmp/secrets-agent-install': Operation not permitted` — `/tmp` is shared, so a fixed name is only ever as safe as whatever ran there before. The directory is now named after the resource id, which is regenerated on every replacement.
+
 ## v1.3.1 - 2026-09-11
 ### What's Changed
 #### 🐛 Bug Fixes
