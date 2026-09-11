@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v1.2.0 - 2026-09-11
+### What's Changed
+#### 🚀 Features
+* `terraform/`: a module that installs a pinned release on a host. It declares no providers and reaches the host over SSH, so it works on a droplet, a Hetzner server, an LXC guest or a machine terraform never created — anything running systemd where the given user has passwordless sudo. The binary is downloaded on the host and verified against the `SHA256SUMS` of that release before anything is installed, the config travels as provisioner content rather than inside a `remote-exec` that a plan would capture, and the agent is run once synchronously so a wrong credential fails the apply instead of a later timer tick. A configuration that consumes nothing — neither `compose_file` nor `systemd_units` — fails at plan time.
+
 ## v1.1.0 - 2026-09-03
 ### What's Changed
 #### 🚀 Features
