@@ -54,10 +54,26 @@ func (a *Applier) Save() error {
 	return WriteFileAtomic(a.Config.AppliedPath(), []byte(out.String()), 0o600, "")
 }
 
+// composeDigest covers the file's contents, not just its path: an image tag bumped in
+// the compose file while the variables stayed the same is still a change that has to be
+// applied. With only the path in the digest, such an edit is reported as "compose
+// unchanged" and the old containers keep running indefinitely.
+func composeDigest(values Values, path string) (string, error) {
+	compose, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return Digest(strings.Join(values.Environ(), "\n"), path, string(compose)), nil
+}
+
 // Compose hands the variables to docker compose in its environment. Nothing is
 // rendered as dotenv text, so no quoting or escaping can go wrong on this path.
 func (a *Applier) Compose(values Values) {
-	digest := Digest(strings.Join(values.Environ(), "\n"), a.Config.ComposeFile)
+	digest, err := composeDigest(values, a.Config.ComposeFile)
+	if err != nil {
+		a.fail("compose file: %v", err)
+		return
+	}
 	if a.applied["compose"] == digest {
 		a.Log.Infof("compose unchanged")
 		return
