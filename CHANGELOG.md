@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v1.4.0 - 2026-09-13
+### What's Changed
+#### 🐛 Bug Fixes
+* Re-apply compose when the compose file itself changes. The digest deciding whether `docker compose up -d` has to run covered the variables and the file's *path*, so an image tag bumped in the compose file while the variables stayed the same was reported as `compose unchanged` and the old containers kept running indefinitely. Found on a host still running an image two releases behind what its compose file asked for, six weeks after the bump. The digest now covers the file's contents, and a missing compose file fails loudly rather than hashing nothing and calling it unchanged.
+
 ## v1.3.2 - 2026-09-11
 ### What's Changed
 #### 🐛 Bug Fixes
