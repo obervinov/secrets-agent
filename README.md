@@ -180,7 +180,9 @@ Secrets Store deliberately does not.
 
 Early. The store it targets is itself in open beta.
 
-Known gap before this is fit for anyone else's production: the Worker checks that
-Cloudflare Access put a JWT on the request, but does not verify its signature or bind
-`aud` to the host being requested. Until it does, per-host isolation rests on Access
-path-matching rather than on cryptography.
+The Worker verifies the Access JWT rather than trusting the header's presence: the
+signature is checked against the team's JWKS, and `aud` is bound to the host being
+requested, so a token issued for one host cannot be replayed against another host's
+path however Access happens to match paths. It refuses to serve at all when
+`TEAM_DOMAIN` is unset, rather than falling back to trusting Access blindly. Per-host
+isolation therefore rests on cryptography and not on Access path-matching.
