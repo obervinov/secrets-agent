@@ -16,9 +16,10 @@ permissions:
 jobs:
   create-release:
     if: github.event.pull_request.merged == true
-    uses: obervinov/_templates/.github/workflows/release.yaml@v4.0.0
+    uses: obervinov/_templates/.github/workflows/release.yaml@v4.2.0
 
   attach-binaries:
-    if: github.event.pull_request.merged == true
-    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v4.0.0
+    # a Dependabot merge releases nothing; rebuilding then would overwrite the released binaries
+    if: github.event.pull_request.merged == true && needs.create-release.outputs.released == 'true'
+    uses: obervinov/_templates/.github/workflows/golang-binaries.yaml@v4.2.0
     needs: [create-release]
