@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## v1.4.2 - 2026-10-11
+### What's Changed
+#### 🔧 CI
+* Workflows use `obervinov/_templates` `v4.2.0`: Dependabot pull requests pass without a `CHANGELOG.md` bump and merge without a release, so the update ships with the next one. The release binaries build after the release runs only when a release was actually created, so such a merge cannot overwrite the release binaries of a version that is already out.
+
 ## v1.4.1 - 2026-09-17
 ### What's Changed
 #### 🐛 Bug Fixes
