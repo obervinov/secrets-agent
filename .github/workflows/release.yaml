@@ -16,7 +16,7 @@ permissions:
 jobs:
   create-release:
     if: github.event.pull_request.merged == true
-    uses: obervinov/_templates/.github/workflows/release.yaml@v4.2.0
+    uses: obervinov/_templates/.github/workflows/release.yaml@v4.3.0
 
   attach-binaries:
     # a Dependabot merge releases nothing; rebuilding then would overwrite the released binaries
